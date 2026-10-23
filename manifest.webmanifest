@@ -1,0 +1,16 @@
+{
+  "name": "Swing Replay",
+  "short_name": "Swing",
+  "description": "Record golf swings, auto-tag P1–P8 and replay them frame by frame.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0e1611",
+  "theme_color": "#1f5a3a",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
