@@ -97,6 +97,21 @@ header.bar { display: flex; align-items: center; justify-content: space-between;
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 select, input[type="text"] { font: 14px var(--body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; }
+.field.inline { flex-direction: row; align-items: center; gap: 8px; }
+.hands { display: grid; gap: 12px; }
+.hf-state { font: 600 13px var(--body); padding: 6px 12px; border-radius: 99px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); }
+.hf-state[data-state="ready"] { background: var(--turf); border-color: var(--turf); color: var(--surface); }
+.hf-state[data-state="swing"] { background: var(--flag); border-color: var(--flag); color: var(--flag-ink); }
+.hf-state[data-state="saved"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.hf-meter { position: relative; height: 8px; border-radius: 4px; background: var(--line); }
+.hf-meter i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 4px; background: var(--turf); }
+.hf-meter em { position: absolute; top: -4px; width: 2px; height: 16px; background: var(--muted); }
+.hf-meter #hfSwing { background: var(--flag); width: 3px; }
+/* big status readable from address, drawn over the live video */
+.hfbig { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font: 700 clamp(28px, 7vw, 54px)/1 var(--display); letter-spacing: .04em; padding: 10px 22px; border-radius: 12px; color: #fff; background: rgba(0,0,0,.6); white-space: nowrap; pointer-events: none; }
+.hfbig[data-state="ready"] { background: rgba(31,120,72,.9); }
+.hfbig[data-state="swing"] { background: rgba(242,184,41,.95); color: #1a1300; }
+.hfbig[data-state="saved"] { background: rgba(255,255,255,.92); color: #0c1410; }
 .fallback { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 20px; display: grid; gap: 10px; max-width: 62ch; }
 .fallback h2 { margin: 0; font-family: var(--display); text-transform: uppercase; font-size: 22px; }
 .fallback p { margin: 0; color: var(--muted); }
@@ -193,25 +208,46 @@ kbd { font: 11px var(--mono); border: 1px solid var(--line); border-bottom-width
 
   <!-- Recorder -->
   <section id="recorderView" class="rec-layout" hidden>
-    <div class="stage" id="recStage">
-      <video id="live" autoplay muted playsinline></video>
-      <div class="overlay"><div class="count" id="countdown"></div></div>
-      <div class="recbadge" id="recBadge" hidden><span class="dot"></span><span id="recTime">0.0 s</span></div>
-    </div>
-    <div class="row" id="recControls">
-      <label class="field">Start delay
-        <select id="delaySel"><option value="0">None</option><option value="3">3 s</option><option value="5" selected>5 s</option><option value="10">10 s</option></select>
-      </label>
-      <label class="field">Record for
-        <select id="lengthSel"><option value="3">3 s</option><option value="5" selected>5 s</option><option value="8">8 s</option><option value="15">15 s</option></select>
-      </label>
-      <label class="field">Camera
-        <select id="facingSel"><option value="environment">Back</option><option value="user">Front</option></select>
-      </label>
-      <div class="row" style="margin-left:auto">
-        <button class="btn" id="cancelRec">Cancel</button>
-        <button class="btn primary" id="startRec"><span class="dot"></span>Start</button>
-        <button class="btn" id="stopRec" hidden>Stop now</button>
+    <div id="recUI" class="rec-layout">
+      <div class="row">
+        <div class="seg" id="modeSeg" role="group" aria-label="Recording mode">
+          <button data-mode="hands" aria-pressed="true">Hands-free</button><button data-mode="timed" aria-pressed="false">Timed</button>
+        </div>
+        <label class="field inline">Camera
+          <select id="facingSel"><option value="environment">Back</option><option value="user">Front</option></select>
+        </label>
+        <button class="btn" id="cancelRec" style="margin-left:auto">Done</button>
+      </div>
+      <div class="stage" id="recStage">
+        <video id="live" autoplay muted playsinline></video>
+        <div class="overlay"><div class="count" id="countdown"></div></div>
+        <div class="recbadge" id="recBadge" hidden><span class="dot"></span><span id="recTime">0.0 s</span></div>
+        <div class="hfbig" id="hfBig" hidden></div>
+      </div>
+      <div class="hands" id="handsPanel">
+        <div class="row">
+          <span class="hf-state" id="hfState" data-state="off">Not running</span>
+          <label class="field inline">Sensitivity
+            <select id="sensSel"><option value="low">Low</option><option value="medium" selected>Medium</option><option value="high">High</option></select>
+          </label>
+          <button class="btn primary" id="hfStart" style="margin-left:auto"><span class="dot"></span>Start session</button>
+          <button class="btn" id="hfStop" style="margin-left:auto" hidden>End session</button>
+        </div>
+        <div class="hf-meter" aria-hidden="true"><i id="hfLevel"></i><em id="hfMove"></em><em id="hfSwing"></em></div>
+        <p class="hint">Prop your phone up with your whole swing in frame and start a session. Settle at address, then swing: each swing is saved and tagged on its own, and you'll hear a double beep when it's saved. The screen stays on while the session runs. The bar shows how much is moving; a swing has to pass the yellow line.</p>
+        <div class="strip" id="hfStrip" hidden></div>
+      </div>
+      <div class="row" id="recControls" hidden>
+        <label class="field">Start delay
+          <select id="delaySel"><option value="0">None</option><option value="3">3 s</option><option value="5" selected>5 s</option><option value="10">10 s</option></select>
+        </label>
+        <label class="field">Record for
+          <select id="lengthSel"><option value="3">3 s</option><option value="5" selected>5 s</option><option value="8">8 s</option><option value="15">15 s</option></select>
+        </label>
+        <div class="row" style="margin-left:auto">
+          <button class="btn primary" id="startRec"><span class="dot"></span>Start</button>
+          <button class="btn" id="stopRec" hidden>Stop now</button>
+        </div>
       </div>
     </div>
     <div class="fallback" id="recFallback" hidden>
@@ -393,6 +429,14 @@ async function addSwing(blob, name, extra = {}) {
   return s;
 }
 
+function removeSwing(s) {
+  dbDelete(s.id);
+  state.swings = state.swings.filter(x => x !== s);
+  hf.ids = hf.ids.filter(id => id !== s.id);
+  if (s.url) URL.revokeObjectURL(s.url);
+  if (!$("#libraryView").hidden) renderLibrary();
+}
+
 /* ---------- views ---------- */
 function show(view) {
   for (const v of ["library", "recorder", "player"]) $("#" + v + "View").hidden = v !== view;
@@ -424,6 +468,7 @@ function renderLibrary() {
 /* ---------- recorder ---------- */
 let stream = null, recorder = null, recTimer = null, audioCtx = null, recBusy = false;
 function stopCamera() {
+  hfStopSession();
   if (recorder && recorder.state !== "inactive") { recorder.onstop = null; recorder.stop(); }
   recorder = null; clearInterval(recTimer); recBusy = false;
   if (stream) stream.getTracks().forEach(t => t.stop());
@@ -444,14 +489,24 @@ async function startCamera() {
 }
 async function openRecorder() {
   show("recorder");
-  $("#recFallback").hidden = true; $("#recStage").hidden = false; $("#recControls").hidden = false;
+  $("#recFallback").hidden = true; $("#recUI").hidden = false;
+  let mode = "hands"; try { mode = localStorage.getItem("swing-replay-mode") || "hands"; } catch (e) {}
+  setMode(mode);
   try {
     if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) throw new Error("no camera api");
     await startCamera();
   } catch (e) {
-    $("#recStage").hidden = true; $("#recControls").hidden = true; $("#recFallback").hidden = false;
+    $("#recUI").hidden = true; $("#recFallback").hidden = false;
   }
 }
+function setMode(mode) {
+  if (hf.on) hfStopSession();
+  $("#modeSeg").querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.dataset.mode === mode));
+  $("#recControls").hidden = mode !== "timed";
+  $("#handsPanel").hidden = mode !== "hands";
+  try { localStorage.setItem("swing-replay-mode", mode); } catch (e) {}
+}
+$("#modeSeg").onclick = e => { const b = e.target.closest("button"); if (b && !recBusy) setMode(b.dataset.mode); };
 function beep(freq, ms) {
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
@@ -495,6 +550,169 @@ function stopRecording() {
   clearInterval(recTimer);
   if (recorder && recorder.state !== "inactive") recorder.stop();
   else stopCamera();
+}
+
+/* ---------- hands-free capture ----------
+   Watches the live camera for the shape of a swing: settle at address, a backswing
+   that builds, a burst of fast motion, then settling at the finish. Recording starts
+   the moment you're still at address, so every clip opens on P1. Movement that isn't
+   a swing (a waggle, walking to tee up) is either kept as part of address or thrown away. */
+const SENS = { low: 1.6, medium: 1, high: 0.6 };
+const hf = { on: false, token: 0, phase: "off", rec: null, since: 0, moveStart: 0, peak: 0, peakAt: 0,
+  series: [], peakIdx: 0, prev: null, recent: [], floor: 0.001, ids: [], wake: null, ctx: null, W: 0, H: 0 };
+let tagQueue = Promise.resolve();
+
+function hfThresholds() {
+  const k = SENS[$("#sensSel").value] || 1;
+  return { still: Math.max(0.003, hf.floor * 3), move: Math.max(0.006, hf.floor * 4) * k, swing: Math.max(0.018, hf.floor * 10) * k };
+}
+function hfShow(state, text, big) {
+  const s = $("#hfState"); s.dataset.state = state; s.textContent = text;
+  const b = $("#hfBig"); b.hidden = !big;
+  if (big) { b.textContent = big; b.dataset.state = state; }
+}
+function hfMeter(lvl, T) {
+  const full = T.swing * 2;
+  $("#hfLevel").style.width = Math.min(100, lvl / full * 100) + "%";
+  $("#hfMove").style.left = (T.move / full * 100) + "%";
+  $("#hfSwing").style.left = "50%";
+}
+async function hfWake(on) {
+  try {
+    if (on && "wakeLock" in navigator) hf.wake = await navigator.wakeLock.request("screen");
+    else if (!on && hf.wake) { await hf.wake.release(); hf.wake = null; }
+  } catch (e) {}
+}
+document.addEventListener("visibilitychange", () => { if (hf.on && document.visibilityState === "visible") hfWake(true); });
+
+function hfStartRec() {
+  const mime = pickMime(), chunks = [];
+  const rec = new MediaRecorder(stream, mime ? { mimeType: mime, videoBitsPerSecond: 6e6 } : undefined);
+  rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  rec.start(250);
+  return { rec, chunks, mime: rec.mimeType || mime || "video/mp4", start: performance.now() / 1000 };
+}
+function hfDrop(r) {
+  if (!r) return;
+  r.rec.ondataavailable = null; r.rec.onstop = null;
+  if (r.rec.state !== "inactive") try { r.rec.stop(); } catch (e) {}
+}
+function hfKeep(r) {
+  r.rec.onstop = () => hfSave(new Blob(r.chunks, { type: r.mime }));
+  r.rec.stop();
+}
+async function hfSave(blob) {
+  const s = await addSwing(blob, "Swing " + (hf.ids.length + 1) + " · " + niceDate(Date.now()));
+  hf.ids.push(s.id); renderHfStrip();
+  // tag one clip at a time so analysis doesn't compete with the live camera
+  tagQueue = tagQueue.then(() => autoTag(s)).then(() => {
+    if (s.marks.p1 == null && /^No clear swing/.test(s.status || "")) {
+      removeSwing(s); toast("Dropped a clip that didn't look like a swing.");
+    }
+    renderHfStrip();
+  });
+}
+
+function hfStartSession() {
+  if (!stream || hf.on) return;
+  beep(1, 1); // unlock audio on the click
+  Object.assign(hf, { on: true, token: hf.token + 1, phase: "waiting", rec: null, since: 0, prev: null, recent: [], ctx: null, floor: 0.001 });
+  $("#hfStart").hidden = true; $("#hfStop").hidden = false; $("#facingSel").disabled = true;
+  hfShow("waiting", "Step into frame and settle at address", "SETTLE");
+  hfWake(true);
+  hfLoop(hf.token);
+}
+function hfStopSession() {
+  if (!hf.on) return;
+  hf.on = false; hfDrop(hf.rec); hf.rec = null; hf.phase = "off";
+  $("#hfStart").hidden = false; $("#hfStop").hidden = true; $("#facingSel").disabled = false;
+  hfShow("off", hf.ids.length ? hf.ids.length + (hf.ids.length === 1 ? " swing" : " swings") + " saved this session" : "Not running", null);
+  $("#hfLevel").style.width = "0";
+  hfWake(false);
+}
+$("#hfStart").onclick = hfStartSession;
+$("#hfStop").onclick = hfStopSession;
+
+function hfLoop(token) {
+  if (!hf.on || token !== hf.token) return;
+  const v = $("#live");
+  if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(() => hfLoop(token));
+  else requestAnimationFrame(() => hfLoop(token));
+  if (!v.videoWidth) return;
+  if (!hf.ctx) {
+    const c = document.createElement("canvas");
+    hf.W = 96; hf.H = Math.max(1, Math.round(96 * v.videoHeight / v.videoWidth));
+    c.width = hf.W; c.height = hf.H; hf.ctx = c.getContext("2d", { willReadFrequently: true });
+  }
+  hf.ctx.drawImage(v, 0, 0, hf.W, hf.H);
+  const px = hf.ctx.getImageData(0, 0, hf.W, hf.H).data, n = hf.W * hf.H, gray = new Uint8Array(n);
+  for (let j = 0, k = 0; j < n; j++, k += 4) gray[j] = (px[k] * 3 + px[k + 1] * 6 + px[k + 2]) / 10;
+  let count = 0;
+  if (hf.prev) for (let j = 0; j < n; j++) if (Math.abs(gray[j] - hf.prev[j]) > 18) count++;
+  hf.prev = gray;
+  // a repeated frame reads as zero motion, so judge on the busiest of the last three
+  hf.recent.push(count / n); if (hf.recent.length > 3) hf.recent.shift();
+  hfStep(Math.max(...hf.recent), performance.now() / 1000);
+}
+
+function hfStep(lvl, now) {
+  const T = hfThresholds();
+  hfMeter(lvl, T);
+  const settle = () => { hf.phase = "waiting"; hf.since = 0; hfShow("waiting", "Waiting for you to settle at address", "SETTLE"); };
+  if (hf.phase === "waiting") { // not recording until the golfer is still
+    if (lvl < T.still) {
+      hf.floor = hf.floor * 0.97 + lvl * 0.03;
+      if (!hf.since) hf.since = now;
+      if (now - hf.since >= 0.5) {
+        hf.rec = hfStartRec(); hf.phase = "address"; hf.since = 0;
+        hfShow("ready", "Ready: swing when you like", "READY"); beep(880, 80);
+      }
+    } else hf.since = 0;
+  } else if (hf.phase === "address") { // recording, golfer still
+    if (lvl >= T.move) { hf.phase = "moving"; hf.moveStart = now; hf.peak = lvl; hf.peakAt = now; hf.since = 0; hf.series = [lvl]; hf.peakIdx = 0; }
+    else {
+      hf.floor = hf.floor * 0.97 + lvl * 0.03;
+      // keep clips short while you wait over the ball: start a fresh one, then drop the old
+      if (now - hf.rec.start > 12) { const old = hf.rec; hf.rec = hfStartRec(); hfDrop(old); }
+    }
+  } else if (hf.phase === "moving") {
+    hf.series.push(lvl);
+    if (lvl > hf.peak) { hf.peak = lvl; hf.peakAt = now; hf.peakIdx = hf.series.length - 1; }
+    if (hf.peak >= T.swing && $("#hfState").dataset.state !== "swing") hfShow("swing", "Swing detected", "SWING");
+    if (lvl < T.still) { if (!hf.since) hf.since = now; } else hf.since = 0;
+    if (hf.since && now - hf.since >= 0.4) { // settled again: decide what that was
+      const length = now - hf.moveStart;
+      if (hf.peak >= T.swing && hf.peakAt - hf.moveStart >= 0.3 && length <= 4 && hasTransition(hf.series, hf.peakIdx)) {
+        hfKeep(hf.rec); hf.rec = null;
+        hf.phase = "waiting"; hf.since = 0;
+        hfShow("saved", "Saved swing " + (hf.ids.length + 1) + ". Settle at address for the next one.", "SAVED");
+        beep(660, 90); setTimeout(() => beep(990, 140), 130);
+      } else if (hf.peak < T.swing) { // a waggle or small shuffle: still at address
+        hf.phase = "address"; hf.since = 0; hfShow("ready", "Ready: swing when you like", "READY");
+      } else { hfDrop(hf.rec); hf.rec = null; settle(); }
+    } else if (now - hf.moveStart > 6) { hfDrop(hf.rec); hf.rec = null; settle(); }
+  }
+}
+
+function renderHfStrip() {
+  const el = $("#hfStrip"); el.replaceChildren();
+  const live = $("#live");
+  el.style.setProperty("--ar", live.videoWidth ? live.videoWidth / live.videoHeight : 9 / 16);
+  const list = hf.ids.map(id => state.swings.find(s => s.id === id)).filter(Boolean);
+  el.hidden = !list.length;
+  list.forEach((s, i) => {
+    const b = document.createElement("button"); b.className = "frame"; b.title = s.name;
+    const pic = document.createElement("div"); pic.className = "pic";
+    if (s.thumb) { const im = document.createElement("img"); im.src = s.thumb; im.alt = s.name; pic.append(im); }
+    const cap = document.createElement("div"); cap.className = "cap";
+    cap.innerHTML = "<b></b><span></span>";
+    cap.querySelector("b").textContent = "#" + (i + 1);
+    const tp = tempo(s.marks);
+    cap.querySelector("span").textContent = s.tagging ? "tagging…" : tp ? tp.ratio.toFixed(1) + ":1" : "";
+    b.append(pic, cap);
+    b.onclick = () => openPlayer(s);
+    el.append(b);
+  });
 }
 
 /* ---------- player ---------- */
@@ -762,9 +980,7 @@ $("#deleteBtn").onclick = e => {
     b.classList.add("armed"); b.textContent = "Tap again to delete";
     clearTimeout(b.t); b.t = setTimeout(disarmDelete, 3000); return;
   }
-  const s = state.cur; dbDelete(s.id);
-  state.swings = state.swings.filter(x => x !== s);
-  if (s.url) URL.revokeObjectURL(s.url);
+  const s = state.cur; removeSwing(s);
   show("library"); toast("Deleted “" + s.name + "”");
 };
 
@@ -847,6 +1063,16 @@ function smooth(a, r = 1) {
   return a.map((_, i) => { let s = 0, n = 0; for (let j = i - r; j <= i + r; j++) if (j >= 0 && j < a.length) { s += a[j]; n++; } return s / n; });
 }
 function peakIndex(a) { let p = 0; for (let i = 1; i < a.length; i++) if (a[i] > a[p]) p = i; return p; }
+// A swing pauses at the top: motion builds through the backswing, drops at the
+// transition, then bursts through impact. Walking or fidgeting has no such dip.
+function hasTransition(a, peak) {
+  let built = 0;
+  for (let i = 0; i < peak; i++) {
+    if (built > 0 && built >= a[i] * 1.5 && a[i] <= a[peak] * 0.6) return true;
+    built = Math.max(built, a[i]);
+  }
+  return false;
+}
 // Phones sometimes record below 30 fps and repeat frames; drop repeats that fall mid-motion.
 function dropRepeats(r) {
   const k = r.motion.map((v, i) => !(v < 0.0005 && i > 0 && i < r.motion.length - 1 && r.motion[i - 1] > 0.003 && r.motion[i + 1] > 0.003));
@@ -866,6 +1092,7 @@ function findPositions(samples) {
     return true;
   };
   let p1 = 0; for (let i = peak - 1; i >= 0; i--) if (stillRun(i, -1)) { p1 = i; break; }
+  if (!hasTransition(m.slice(p1), peak - p1)) return null;
   const lo = p1 + Math.max(2, Math.round((peak - p1) * 0.35)), hi = peak - Math.max(2, Math.round(0.1 / dt));
   if (hi <= lo) return null;
   let p4 = lo; for (let i = lo; i <= hi; i++) if (m[i] < m[p4]) p4 = i;

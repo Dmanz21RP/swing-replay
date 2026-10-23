@@ -1,6 +1,6 @@
 // Offline support: the app shell is served from cache when there's no signal at the range.
 // Bump VERSION whenever app files change so phones pick up the new build.
-const VERSION = "swing-replay-v1";
+const VERSION = "swing-replay-v2";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {
